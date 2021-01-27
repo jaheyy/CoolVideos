@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CoolVideos.Helpers;
@@ -146,9 +147,6 @@ namespace CoolVideos.Controllers
         [HttpPost]
         public async Task<ActionResult<Video>> PostVideo(Video video)
         {
-            video.Uri = string.Concat(video.Id, ".mp4");
-            video.Image = string.Concat(video.Id, ".jpg");
-
             try
             {
                 _context.Videos.Add(video);
@@ -160,6 +158,10 @@ namespace CoolVideos.Controllers
 
             try
             {
+                await _context.SaveChangesAsync();
+                video.Uri = string.Concat(video.Id, ".mp4");
+                video.Image = string.Concat(video.Id, ".jpg");
+                _context.Videos.Update(video);
                 await _context.SaveChangesAsync();
             }
             catch
@@ -212,18 +214,20 @@ namespace CoolVideos.Controllers
             var video = await _context.Videos.FindAsync(id);
 
             if (video == null)
-            {
                 return NotFound();
-            }
 
             if (!isUserVideoOwner(video))
-            {
                 return StatusCode(403);
-            }
 
             try
             {
                 _context.Videos.Remove(video);
+                var imageFile = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "Images", video.Image);
+                var videoFile = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "Videos", video.Uri);
+                if (System.IO.File.Exists(imageFile))
+                    System.IO.File.Delete(imageFile);
+                if (System.IO.File.Exists(videoFile))
+                    System.IO.File.Delete(videoFile);
             }
             catch (Exception exception)
             {
